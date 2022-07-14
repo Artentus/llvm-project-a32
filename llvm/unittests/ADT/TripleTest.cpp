@@ -75,6 +75,12 @@ TEST(TripleTest, BasicParsing) {
 TEST(TripleTest, ParsedIDs) {
   Triple T;
 
+  T = Triple("a32-unknown-unknown");
+  EXPECT_EQ(Triple::a32, T.getArch());
+  EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
+  EXPECT_EQ(Triple::UnknownOS, T.getOS());
+  EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
+
   T = Triple("i386-apple-darwin");
   EXPECT_EQ(Triple::x86, T.getArch());
   EXPECT_EQ(Triple::Apple, T.getVendor());
@@ -994,6 +1000,11 @@ TEST(TripleTest, BitWidthPredicates) {
   EXPECT_FALSE(T.isArch32Bit());
   EXPECT_FALSE(T.isArch64Bit());
 
+  T.setArch(Triple::a32);
+  EXPECT_FALSE(T.isArch16Bit());
+  EXPECT_TRUE(T.isArch32Bit());
+  EXPECT_FALSE(T.isArch64Bit());
+
   T.setArch(Triple::arm);
   EXPECT_FALSE(T.isArch16Bit());
   EXPECT_TRUE(T.isArch32Bit());
@@ -1160,6 +1171,10 @@ TEST(TripleTest, BitWidthArchVariants) {
 
   T.setArch(Triple::UnknownArch);
   EXPECT_EQ(Triple::UnknownArch, T.get32BitArchVariant().getArch());
+  EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
+
+  T.setArch(Triple::a32);
+  EXPECT_EQ(Triple::a32, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 
   T.setArch(Triple::mips);
@@ -1355,6 +1370,10 @@ TEST(TripleTest, EndianArchVariants) {
   T.setArch(Triple::UnknownArch);
   EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.getLittleEndianArchVariant().getArch());
+
+  T.setArch(Triple::a32);
+  EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
+  EXPECT_EQ(Triple::a32, T.getLittleEndianArchVariant().getArch());
 
   T.setArch(Triple::aarch64_be);
   EXPECT_EQ(Triple::aarch64_be, T.getBigEndianArchVariant().getArch());

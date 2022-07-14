@@ -24,6 +24,7 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   switch (Kind) {
   case UnknownArch:    return "unknown";
 
+  case a32:            return "a32";
   case aarch64:        return "aarch64";
   case aarch64_32:     return "aarch64_32";
   case aarch64_be:     return "aarch64_be";
@@ -92,6 +93,8 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
   switch (Kind) {
   default:
     return StringRef();
+
+  case a32:         return "a32";
 
   case aarch64:
   case aarch64_be:
@@ -307,6 +310,7 @@ static Triple::ArchType parseBPFArch(StringRef ArchName) {
 Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
   Triple::ArchType BPFArch(parseBPFArch(Name));
   return StringSwitch<Triple::ArchType>(Name)
+    .Case("a32", a32)
     .Case("aarch64", aarch64)
     .Case("aarch64_be", aarch64_be)
     .Case("aarch64_32", aarch64_32)
@@ -441,6 +445,7 @@ static Triple::ArchType parseARMArch(StringRef ArchName) {
 
 static Triple::ArchType parseArch(StringRef ArchName) {
   auto AT = StringSwitch<Triple::ArchType>(ArchName)
+    .Case("a32", Triple::a32)
     .Cases("i386", "i486", "i586", "i686", Triple::x86)
     // FIXME: Do we need to support these?
     .Cases("i786", "i886", "i986", Triple::x86)
@@ -790,6 +795,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
       return Triple::COFF;
     return Triple::ELF;
 
+  case Triple::a32:
   case Triple::aarch64_be:
   case Triple::amdgcn:
   case Triple::amdil64:
@@ -1377,6 +1383,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::msp430:
     return 16;
 
+  case llvm::Triple::a32:
   case llvm::Triple::aarch64_32:
   case llvm::Triple::amdil:
   case llvm::Triple::arc:
@@ -1467,6 +1474,7 @@ Triple Triple::get32BitArchVariant() const {
     T.setArch(UnknownArch);
     break;
 
+  case Triple::a32:
   case Triple::aarch64_32:
   case Triple::amdil:
   case Triple::arc:
@@ -1536,6 +1544,7 @@ Triple Triple::get64BitArchVariant() const {
   Triple T(*this);
   switch (getArch()) {
   case Triple::UnknownArch:
+  case Triple::a32:
   case Triple::arc:
   case Triple::avr:
   case Triple::csky:
@@ -1618,6 +1627,7 @@ Triple Triple::getBigEndianArchVariant() const {
     return T;
   switch (getArch()) {
   case Triple::UnknownArch:
+  case Triple::a32:
   case Triple::amdgcn:
   case Triple::amdil64:
   case Triple::amdil:
@@ -1716,6 +1726,7 @@ Triple Triple::getLittleEndianArchVariant() const {
 
 bool Triple::isLittleEndian() const {
   switch (getArch()) {
+  case Triple::a32:
   case Triple::aarch64:
   case Triple::aarch64_32:
   case Triple::amdgcn:
