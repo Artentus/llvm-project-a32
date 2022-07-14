@@ -320,6 +320,8 @@ enum {
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
+
+  EM_A32 = 800,           // A32
 };
 
 // Object file classes.
@@ -378,6 +380,11 @@ enum {
 };
 
 #define ELF_RELOC(name, value) name = value,
+
+// ELF Relocation types for A32
+enum {
+#include "ELFRelocs/A32.def"
+};
 
 // X86_64 relocations.
 enum {

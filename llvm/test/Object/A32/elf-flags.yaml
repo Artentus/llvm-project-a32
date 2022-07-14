@@ -1,0 +1,16 @@
+# RUN: yaml2obj %s -o %t
+# RUN: llvm-readobj --file-headers %t | FileCheck -check-prefix=OBJ %s
+# RUN: obj2yaml %t | FileCheck -check-prefix=YAML %s
+
+# YAML:      FileHeader:
+# YAML-NEXT:   Class:           ELFCLASS32
+# YAML-NEXT:   Data:            ELFDATA2LSB
+# YAML-NEXT:   Type:            ET_EXEC
+# YAML-NEXT:   Machine:         EM_A32
+
+--- !ELF
+FileHeader:
+  Class:           ELFCLASS32
+  Data:            ELFDATA2LSB
+  Type:            ET_EXEC
+  Machine:         EM_A32

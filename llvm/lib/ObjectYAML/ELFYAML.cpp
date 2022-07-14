@@ -351,6 +351,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_EM>::enumeration(
   ECase(EM_VE);
   ECase(EM_CSKY);
   ECase(EM_LOONGARCH);
+  ECase(EM_A32);
 #undef ECase
   IO.enumFallback<Hex16>(Value);
 }
@@ -832,6 +833,9 @@ void ScalarEnumerationTraits<ELFYAML::ELF_REL>::enumeration(
   assert(Object && "The IO context is not initialized");
 #define ELF_RELOC(X, Y) IO.enumCase(Value, #X, ELF::X);
   switch (Object->getMachine()) {
+  case ELF::EM_A32:
+#include "llvm/BinaryFormat/ELFRelocs/A32.def"
+    break;
   case ELF::EM_X86_64:
 #include "llvm/BinaryFormat/ELFRelocs/x86_64.def"
     break;

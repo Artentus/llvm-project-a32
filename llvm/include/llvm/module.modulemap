@@ -62,6 +62,7 @@ module LLVM_BinaryFormat {
     textual header "BinaryFormat/MachO.def"
     textual header "BinaryFormat/MinidumpConstants.def"
     textual header "BinaryFormat/Swift.def"
+    textual header "BinaryFormat/ELFRelocs/A32.def"
     textual header "BinaryFormat/ELFRelocs/AArch64.def"
     textual header "BinaryFormat/ELFRelocs/AMDGPU.def"
     textual header "BinaryFormat/ELFRelocs/ARM.def"
