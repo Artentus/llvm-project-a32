@@ -18,6 +18,3 @@ Target &llvm::getTheA32Target() {
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeA32TargetInfo() {
   RegisterTarget<Triple::a32> X(getTheA32Target(), "a32", "A32", "A32");
 }
-
-// FIXME: Temporary stub
-extern "C" void LLVMInitializeA32TargetMC() {}
