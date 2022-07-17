@@ -2,6 +2,7 @@ add_llvm_component_group(A32)
 
 set(LLVM_TARGET_DEFINITIONS A32.td)
 
+tablegen(LLVM A32GenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM A32GenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM A32GenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM A32GenMCCodeEmitter.inc -gen-emitter)
@@ -31,5 +32,6 @@ add_llvm_target(A32CodeGen
   A32
   )
 
+add_subdirectory(AsmParser)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)

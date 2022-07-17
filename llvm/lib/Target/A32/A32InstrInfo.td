@@ -193,16 +193,16 @@ def LDI : A32InstMoveImm<CON_TRUE, (outs GPR:$rd), (ins GPR:$rsl, imm15:$imm15sr
 // Assembler Pseudo Instructions
 //===----------------------------------------------------------------------===//
 
-def : InstAlias<"cmp  $rsl, $rsr",     (SUB R0, GPR:$rsl, GPR:$rsr      )>;
-def : InstAlias<"cmp  $rsl, $imm15sr", (SUB R0, GPR:$rsl, imm15:$imm15sr)>;
-def : InstAlias<"bit  $rsl, $rsr",     (AND R0, GPR:$rsl, GPR:$rsr      )>;
-def : InstAlias<"bit  $rsl, $imm15sr", (AND R0, GPR:$rsl, imm15:$imm15sr)>;
-def : InstAlias<"test $rs",            (OR  R0, GPR:$rs,  R0            )>;
+def : InstAlias<"cmp  $rsl, $rsr",     (SUB  R0, GPR:$rsl, GPR:$rsr      )>;
+def : InstAlias<"cmp  $rsl, $imm15sr", (ISUB R0, GPR:$rsl, imm15:$imm15sr)>;
+def : InstAlias<"bit  $rsl, $rsr",     (AND  R0, GPR:$rsl, GPR:$rsr      )>;
+def : InstAlias<"bit  $rsl, $imm15sr", (IAND R0, GPR:$rsl, imm15:$imm15sr)>;
+def : InstAlias<"test $rs",            (OR   R0, GPR:$rs,  R0            )>;
 
-def : InstAlias<"inc  $rd", (IADD GPR:$rd, GPR:$rd, 1)>;
-def : InstAlias<"incc $rd", (ADDC GPR:$rd, GPR:$rd, 0)>;
-def : InstAlias<"dec  $rd", (ISUB GPR:$rd, GPR:$rd, 1)>;
-def : InstAlias<"decb $rd", (SUBB GPR:$rd, GPR:$rd, 0)>;
+def : InstAlias<"inc  $rd", (IADD  GPR:$rd, GPR:$rd, 1)>;
+def : InstAlias<"incc $rd", (IADDC GPR:$rd, GPR:$rd, 0)>;
+def : InstAlias<"dec  $rd", (ISUB  GPR:$rd, GPR:$rd, 1)>;
+def : InstAlias<"decb $rd", (ISUBB GPR:$rd, GPR:$rd, 0)>;
 
 def : InstAlias<"neg  $rd, $rs", (SUB  GPR:$rd, R0, GPR:$rs)>;
 def : InstAlias<"negb $rd, $rs", (SUBB GPR:$rd, R0, GPR:$rs)>;
@@ -215,22 +215,22 @@ def : InstAlias<"ld16  $rd, [$rs]", (LD16  GPR:$rd, GPR:$rs, 0)>;
 def : InstAlias<"ld16s $rd, [$rs]", (LD16S GPR:$rd, GPR:$rs, 0)>;
 def : InstAlias<"in    $rd, [$rs]", (IN    GPR:$rd, GPR:$rs, 0)>;
 
-def : InstAlias<"ld    $rd, [$imm15o]", (LD    GPR:$rd, R0, imm15:$imm15sr)>;
-def : InstAlias<"ld8   $rd, [$imm15o]", (LD8   GPR:$rd, R0, imm15:$imm15sr)>;
-def : InstAlias<"ld8s  $rd, [$imm15o]", (LD8S  GPR:$rd, R0, imm15:$imm15sr)>;
-def : InstAlias<"ld16  $rd, [$imm15o]", (LD16  GPR:$rd, R0, imm15:$imm15sr)>;
-def : InstAlias<"ld16s $rd, [$imm15o]", (LD16S GPR:$rd, R0, imm15:$imm15sr)>;
-def : InstAlias<"in    $rd, [$imm15o]", (IN    GPR:$rd, R0, imm15:$imm15sr)>;
+def : InstAlias<"ld    $rd, [$imm15o]", (LD    GPR:$rd, R0, imm15:$imm15o)>;
+def : InstAlias<"ld8   $rd, [$imm15o]", (LD8   GPR:$rd, R0, imm15:$imm15o)>;
+def : InstAlias<"ld8s  $rd, [$imm15o]", (LD8S  GPR:$rd, R0, imm15:$imm15o)>;
+def : InstAlias<"ld16  $rd, [$imm15o]", (LD16  GPR:$rd, R0, imm15:$imm15o)>;
+def : InstAlias<"ld16s $rd, [$imm15o]", (LD16S GPR:$rd, R0, imm15:$imm15o)>;
+def : InstAlias<"in    $rd, [$imm15o]", (IN    GPR:$rd, R0, imm15:$imm15o)>;
 
 def : InstAlias<"st   [$rd], $rs", (ST   GPR:$rd, GPR:$rs, 0)>;
 def : InstAlias<"st8  [$rd], $rs", (ST8  GPR:$rd, GPR:$rs, 0)>;
 def : InstAlias<"st16 [$rd], $rs", (ST16 GPR:$rd, GPR:$rs, 0)>;
 def : InstAlias<"out  [$rd], $rs", (OUT  GPR:$rd, GPR:$rs, 0)>;
 
-def : InstAlias<"st   [$imm15o], $rs", (ST   R0, GPR:$rs, imm15:$imm15sr)>;
-def : InstAlias<"st8  [$imm15o], $rs", (ST8  R0, GPR:$rs, imm15:$imm15sr)>;
-def : InstAlias<"st16 [$imm15o], $rs", (ST16 R0, GPR:$rs, imm15:$imm15sr)>;
-def : InstAlias<"out  [$imm15o], $rs", (OUT  R0, GPR:$rs, imm15:$imm15sr)>;
+def : InstAlias<"st   [$imm15o], $rs", (ST   R0, GPR:$rs, imm15:$imm15o)>;
+def : InstAlias<"st8  [$imm15o], $rs", (ST8  R0, GPR:$rs, imm15:$imm15o)>;
+def : InstAlias<"st16 [$imm15o], $rs", (ST16 R0, GPR:$rs, imm15:$imm15o)>;
+def : InstAlias<"out  [$imm15o], $rs", (OUT  R0, GPR:$rs, imm15:$imm15o)>;
 
 def : InstAlias<"jmp $rs"      , (JMP     GPR:$rs, 0)       >;
 def : InstAlias<"jmp $imm15o"  , (JMP     R0, imm15:$imm15o)>;

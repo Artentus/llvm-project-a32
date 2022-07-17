@@ -19,6 +19,10 @@ include "A32InstrInfo.td"
 
 def A32InstrInfo : InstrInfo;
 
+def A32AsmParser : AsmParser {
+  let ShouldEmitMatchRegisterAltName = 1;
+}
+
 //===----------------------------------------------------------------------===//
 // A32 processors supported.
 //===----------------------------------------------------------------------===//
@@ -31,4 +35,5 @@ def : ProcessorModel<"generic-a32", NoSchedModel, []>;
 
 def A32 : Target {
   let InstructionSet = A32InstrInfo;
+  let AssemblyParsers = [A32AsmParser];
 }
