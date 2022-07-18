@@ -120,7 +120,14 @@ unsigned A32MCCodeEmitter::getImmOpValue(
   const MCSubtargetInfo &STI
 ) const {
   const MCOperand &MO = MI.getOperand(OpNo);
-  return MO.getImm();
+
+  // If the destination is an immediate, there is nothing to do
+  if (MO.isImm())
+    return MO.getImm();
+
+  llvm_unreachable("Unhandled expression!");
+
+  return 0;
 }
 
 #include "A32GenMCCodeEmitter.inc"

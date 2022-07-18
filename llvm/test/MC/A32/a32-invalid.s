@@ -9,9 +9,9 @@ subs t0, t2, t1 // CHECK: :[[@LINE]]:1: error: unrecognized instruction mnemonic
 nand t0, zero, 0 // CHECK: :[[@LINE]]:1: error: unrecognized instruction mnemonic
 
 # Invalid register names
-add foo, sp, 10 // CHECK: :[[@LINE]]:5: error: unknown operand
-shl a10, a2, 0x20 // CHECK: :[[@LINE]]:5: error: unknown operand
-lsr r32, s0, s0 // CHECK: :[[@LINE]]:5: error: unknown operand
+add foo, sp, 10 // CHECK: :[[@LINE]]:5: error: invalid operand for instruction
+shl a10, a2, 0x20 // CHECK: :[[@LINE]]:5: error: invalid operand for instruction
+lsr r32, s0, s0 // CHECK: :[[@LINE]]:5: error: invalid operand for instruction
 
 # Invalid operand types
 xor sp, 22, 220 // CHECK: :[[@LINE]]:9: error: invalid operand for instruction

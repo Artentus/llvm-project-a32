@@ -4,6 +4,7 @@ set(LLVM_TARGET_DEFINITIONS A32.td)
 
 tablegen(LLVM A32GenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM A32GenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM A32GenDisassemblerTables.inc -gen-disassembler)
 tablegen(LLVM A32GenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM A32GenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM A32GenMCCodeEmitter.inc -gen-emitter)
@@ -34,5 +35,6 @@ add_llvm_target(A32CodeGen
   )
 
 add_subdirectory(AsmParser)
+add_subdirectory(Disassembler)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(TargetInfo)

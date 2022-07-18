@@ -44,6 +44,9 @@ struct A32Operand;
 class A32AsmParser : public MCTargetAsmParser {
   SMLoc getLoc() const { return getParser().getTok().getLoc(); }
 
+  bool generateImmOutOfRangeError(OperandVector &Operands, uint64_t ErrorInfo,
+                                  int64_t Lower, int64_t Upper, Twine Msg);
+
   bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
                                uint64_t &ErrorInfo,
@@ -239,13 +242,23 @@ public:
 #define GET_MNEMONIC_SPELL_CHECKER
 #include "A32GenAsmMatcher.inc"
 
+bool A32AsmParser::generateImmOutOfRangeError(
+    OperandVector &Operands,
+    uint64_t ErrorInfo,
+    int64_t Lower,
+    int64_t Upper,
+    Twine Msg = "immediate must be an integer in the range"
+) {
+  SMLoc ErrorLoc = ((A32Operand &)*Operands[ErrorInfo]).getStartLoc();
+  return Error(ErrorLoc, Msg + " [" + Twine(Lower) + ", " + Twine(Upper) + "]");
+}
+
 bool A32AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                              OperandVector &Operands,
                                              MCStreamer &Out,
                                              uint64_t &ErrorInfo,
                                              bool MatchingInlineAsm) {
   MCInst Inst;
-  SMLoc ErrorLoc;
 
   switch (MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm)) {
   default:
@@ -258,8 +271,8 @@ bool A32AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
     return Error(IDLoc, "instruction use requires an option to be enabled");
   case Match_MnemonicFail:
     return Error(IDLoc, "unrecognized instruction mnemonic");
-  case Match_InvalidOperand:
-    ErrorLoc = IDLoc;
+  case Match_InvalidOperand: {
+    SMLoc ErrorLoc = IDLoc;
     if (ErrorInfo != ~0U) {
       if (ErrorInfo >= Operands.size())
         return Error(ErrorLoc, "too few operands for instruction");
@@ -269,10 +282,13 @@ bool A32AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
         ErrorLoc = IDLoc;
     }
     return Error(ErrorLoc, "invalid operand for instruction");
+  }
   case Match_InvalidImm15:
-    SMLoc ErrorLoc = ((A32Operand &)*Operands[ErrorInfo]).getStartLoc();
-    return Error(ErrorLoc,
-                 "immediate must be an integer in the range [-16384, 16383]");
+    return generateImmOutOfRangeError(Operands, ErrorInfo, -(1 << 14), (1 << 14) - 1);
+  case Match_InvalidImm22:
+    return generateImmOutOfRangeError(Operands, ErrorInfo, -(1 << 21), (1 << 21) - 1);
+  case Match_InvalidUI20:
+    return generateImmOutOfRangeError(Operands, ErrorInfo, -((int64_t)1 << 31), ((int64_t)1 << 31) - 1);
   }
 
   llvm_unreachable("Unknown match type detected!");
@@ -324,6 +340,10 @@ OperandMatchResultTy A32AsmParser::parseRegister(OperandVector &Operands) {
 }
 
 OperandMatchResultTy A32AsmParser::parseImmediate(OperandVector &Operands) {
+  SMLoc S = getLoc();
+  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+  const MCExpr *Res;
+
   switch (getLexer().getKind()) {
   default:
     return MatchOperand_NoMatch;
@@ -332,16 +352,20 @@ OperandMatchResultTy A32AsmParser::parseImmediate(OperandVector &Operands) {
   case AsmToken::Plus:
   case AsmToken::Integer:
   case AsmToken::String:
+    if (getParser().parseExpression(Res))
+      return MatchOperand_ParseFail;
+    break;
+  case AsmToken::Identifier: {
+    StringRef Identifier;
+    if (getParser().parseIdentifier(Identifier))
+      return MatchOperand_ParseFail;
+    MCSymbol *Sym = getContext().getOrCreateSymbol(Identifier);
+    Res = MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, getContext());
     break;
   }
+  }
 
-  const MCExpr *IdVal;
-  SMLoc S = getLoc();
-  if (getParser().parseExpression(IdVal))
-    return MatchOperand_ParseFail;
-
-  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-  Operands.push_back(A32Operand::createImm(IdVal, S, E));
+  Operands.push_back(A32Operand::createImm(Res, S, E));
   return MatchOperand_Success;
 }
 
