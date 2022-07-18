@@ -29,7 +29,7 @@ class UIAsmOperand<int width> : AsmOperandClass {
   let DiagnosticType = !strconcat("Invalid", Name);
 }
 
-def imm15 : Operand<i32>, ImmLeaf<i32, [{return isInt<15>(Imm);}]> {
+def imm15 : Operand<i32> {
   let ParserMatchClass = ImmAsmOperand<15>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<15>";
@@ -44,7 +44,7 @@ def imm15 : Operand<i32>, ImmLeaf<i32, [{return isInt<15>(Imm);}]> {
 }
 
 // A 22-bit signed immediate where the two least significant bits are zero.
-def imm22 : Operand<i32>, ImmLeaf<i32, [{return isInt<22>(Imm);}]> {
+def imm22 : Operand<i32> {
   let ParserMatchClass = ImmAsmOperand<22>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<22>";
@@ -58,7 +58,7 @@ def imm22 : Operand<i32>, ImmLeaf<i32, [{return isInt<22>(Imm);}]> {
   //let OperandNamespace = "A32Op";
 }
 
-def ui20 : Operand<i32>, ImmLeaf<i32, [{return isInt<32>(Imm);}]> {
+def ui20 : Operand<i32> {
   let ParserMatchClass = UIAsmOperand<20>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<32>";

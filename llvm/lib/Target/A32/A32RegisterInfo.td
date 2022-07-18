@@ -60,7 +60,7 @@ def GPR : RegisterClass<"A32", [i32], 32,
   (add
     (sequence "R%u", 3, 10),  // a0-a7
     (sequence "R%u", 11, 18), // t0-t7
-    (sequence "R%u", 28, 31), // s0-s12
+    (sequence "R%u", 19, 31), // s0-s12
     (sequence "R%u", 0, 2)    // zero, ra, sp
   )>;
 

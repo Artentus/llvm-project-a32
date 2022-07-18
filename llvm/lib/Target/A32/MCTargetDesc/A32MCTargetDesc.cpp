@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "A32MCTargetDesc.h"
+#include "A32InstPrinter.h"
 #include "A32MCAsmInfo.h"
 #include "TargetInfo/A32TargetInfo.h"
 #include "llvm/ADT/STLExtras.h"
@@ -76,6 +77,14 @@ static MCSubtargetInfo *createA32MCSubtargetInfo(
   return createA32MCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FS);
 }
 
+static MCInstPrinter *createA32MCInstPrinter(const Triple &T,
+                                               unsigned SyntaxVariant,
+                                               const MCAsmInfo &MAI,
+                                               const MCInstrInfo &MII,
+                                               const MCRegisterInfo &MRI) {
+  return new A32InstPrinter(MAI, MII, MRI);
+}
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeA32TargetMC() {
   for (Target *T : {&getTheA32Target()}) {
     TargetRegistry::RegisterMCAsmInfo(*T, createA32MCAsmInfo);
@@ -83,6 +92,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeA32TargetMC() {
     TargetRegistry::RegisterMCRegInfo(*T, createA32MCRegisterInfo);
     TargetRegistry::RegisterMCAsmBackend(*T, createA32AsmBackend);
     TargetRegistry::RegisterMCCodeEmitter(*T, createA32MCCodeEmitter);
+    TargetRegistry::RegisterMCInstPrinter(*T, createA32MCInstPrinter);
     TargetRegistry::RegisterMCSubtargetInfo(*T, createA32MCSubtargetInfo);
   }
 }
