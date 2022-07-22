@@ -26,7 +26,7 @@ mul a3, a4, -10
 # CHECK: encoding: [0x24,0x06,0x10,0x00]
 link t1, 8
 
-# CHECK-INST: ldui t2, 1755879355
+# CHECK-INST: ldui t2, 1755877376
 # CHECK-OBJ: ldui t2, 1755877376
 # CHECK: encoding: [0xc4,0x26,0x2a,0x3a]
-ldui t2, 1755879355
+ldui t2, 1755877376

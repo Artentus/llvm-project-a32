@@ -57,3 +57,19 @@ void A32InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   assert(MO.isExpr() && "Unknown operand kind in printOperand");
   MO.getExpr()->print(O, &MAI);
 }
+
+void A32InstPrinter::printPcRelOperand(const MCInst *MI, uint64_t Address,
+                                          unsigned OpNo,
+                                          raw_ostream &O) {
+  const MCOperand &MO = MI->getOperand(OpNo);
+  if (!MO.isImm())
+    return printOperand(MI, OpNo, O);
+
+  if (PrintBranchImmAsAddress) {
+    uint64_t Target = Address + MO.getImm();
+    Target &= 0xFFFFFFFF;
+    O << formatHex(Target);
+  } else {
+    O << MO.getImm();
+  }
+}

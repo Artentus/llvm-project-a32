@@ -10,6 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/A32FixupKinds.h"
+#include "MCTargetDesc/A32BaseInfo.h"
+#include "MCTargetDesc/A32MCExpr.h"
 #include "MCTargetDesc/A32MCTargetDesc.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -31,6 +34,7 @@ using namespace llvm;
 #define DEBUG_TYPE "mccodeemitter"
 
 STATISTIC(MCNumEmitted, "Number of MC instructions emitted");
+STATISTIC(MCNumFixups, "Number of MC fixups created");
 
 namespace {
 class A32MCCodeEmitter : public MCCodeEmitter {
@@ -102,7 +106,6 @@ unsigned A32MCCodeEmitter::getMachineOpValue(
   SmallVectorImpl<MCFixup> &Fixups,
   const MCSubtargetInfo &STI
 ) const {
-
   if (MO.isReg())
     return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
 
@@ -120,12 +123,81 @@ unsigned A32MCCodeEmitter::getImmOpValue(
   const MCSubtargetInfo &STI
 ) const {
   const MCOperand &MO = MI.getOperand(OpNo);
+  MCInstrDesc const &Desc = MCII.get(MI.getOpcode());
+  unsigned MIFrm = Desc.TSFlags & A32II::InstFormatMask;
 
   // If the destination is an immediate, there is nothing to do
   if (MO.isImm())
     return MO.getImm();
 
-  llvm_unreachable("Unhandled expression!");
+  assert(MO.isExpr() && "getImmOpValue expects only expressions or immediates");
+  const MCExpr *Expr = MO.getExpr();
+  MCExpr::ExprKind Kind = Expr->getKind();
+  A32::Fixups FixupKind = A32::fixup_a32_invalid;
+  if (Kind == MCExpr::Target) {
+    const A32MCExpr *RVExpr = cast<A32MCExpr>(Expr);
+
+    switch (RVExpr->getKind()) {
+    case A32MCExpr::VK_A32_Invalid:
+      llvm_unreachable("Unhandled fixup kind!");
+    case A32MCExpr::VK_A32_None: {
+      switch (MIFrm) {
+      case A32II::InstFormatBranch:
+        FixupKind = A32::fixup_a32_branch;
+        break;
+      case A32II::InstFormatRegImm:
+        FixupKind = A32::fixup_a32_lo15;
+        break;
+      case A32II::InstFormatUI:
+        FixupKind = A32::fixup_a32_hi20;
+        break;
+      }
+
+      break;
+    }
+    case A32MCExpr::VK_A32_LO12:
+      if (MIFrm == A32II::InstFormatRegImm)
+        FixupKind = A32::fixup_a32_lo12;
+      else
+        llvm_unreachable("VK_A32_LO12 used with unexpected instruction format");
+      break;
+    case A32MCExpr::VK_A32_LO12_PCREL:
+      if (MIFrm == A32II::InstFormatRegImm)
+        FixupKind = A32::fixup_a32_lo12_pcrel;
+      else
+        llvm_unreachable("VK_A32_LO12_PCREL used with unexpected instruction format");
+      break;
+    case A32MCExpr::VK_A32_HI20:
+      if (MIFrm == A32II::InstFormatUI)
+        FixupKind = A32::fixup_a32_hi20;
+      else
+        llvm_unreachable("VK_A32_HI20 used with unexpected instruction format");
+      break;
+    case A32MCExpr::VK_A32_HI20_PCREL:
+      if (MIFrm == A32II::InstFormatUI)
+        FixupKind = A32::fixup_a32_hi20_pcrel;
+      else
+        llvm_unreachable("VK_A32_HI20_PCREL used with unexpected instruction format");
+      break;
+    }
+  } else if (Kind == MCExpr::SymbolRef &&
+      cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
+
+    switch (MIFrm) {
+    case A32II::InstFormatBranch:
+      FixupKind = A32::fixup_a32_branch;
+      break;
+    case A32II::InstFormatRegImm:
+      FixupKind = A32::fixup_a32_lo15;
+      break;
+    }
+  }
+
+  assert(FixupKind != A32::fixup_a32_invalid && "Unhandled expression!");
+
+  Fixups.push_back(
+      MCFixup::create(0, Expr, MCFixupKind(FixupKind), MI.getLoc()));
+  ++MCNumFixups;
 
   return 0;
 }

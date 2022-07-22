@@ -3,4 +3,12 @@
 #error "ELF_RELOC must be defined"
 #endif
 
-ELF_RELOC(R_A32_NONE,               0)
+ELF_RELOC(R_A32_NONE,       0)
+ELF_RELOC(R_A32_32,         1)
+ELF_RELOC(R_A32_64,         2)
+ELF_RELOC(R_A32_BRANCH,     3)
+ELF_RELOC(R_A32_LO12,       4)
+ELF_RELOC(R_A32_LO12_PCREL, 5)
+ELF_RELOC(R_A32_HI20,       6)
+ELF_RELOC(R_A32_HI20_PCREL, 7)
+ELF_RELOC(R_A32_LO15,       8)

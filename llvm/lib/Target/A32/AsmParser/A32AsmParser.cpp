@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/A32AsmBackend.h"
+#include "MCTargetDesc/A32MCExpr.h"
 #include "MCTargetDesc/A32MCTargetDesc.h"
 #include "TargetInfo/A32TargetInfo.h"
 #include "llvm/ADT/STLExtras.h"
@@ -69,6 +70,7 @@ class A32AsmParser : public MCTargetAsmParser {
   OperandMatchResultTy parseRegister(OperandVector &Operands);
 
   bool parseOperand(OperandVector &Operands, StringRef Mnemonic);
+  OperandMatchResultTy parseOperandWithModifier(OperandVector &Operands);
 
 public:
   enum A32MatchResultTy {
@@ -77,6 +79,8 @@ public:
 #include "A32GenAsmMatcher.inc"
 #undef GET_OPERAND_DIAGNOSTIC_TYPES
   };
+
+  static bool classifySymbolRef(const MCExpr *Expr, A32MCExpr::VariantKind &Kind);
 
   A32AsmParser(const MCSubtargetInfo &STI, MCAsmParser &Parser,
                const MCInstrInfo &MII, const MCTargetOptions &Options)
@@ -135,25 +139,67 @@ public:
   bool isImm() const override { return Kind == KindTy::Immediate; }
   bool isMem() const override { return false; }
 
-  bool isConstantImm() const {
-    return isImm() && dyn_cast<MCConstantExpr>(getImm());
-  }
+  bool evaluateConstantImm(const MCExpr *Expr, int64_t &Imm, A32MCExpr::VariantKind &VK) const {
+    if (auto *RE = dyn_cast<A32MCExpr>(Expr)) {
+      VK = RE->getKind();
+      return RE->evaluateAsConstant(Imm);
+    }
 
-  int64_t getConstantImm() const {
-    const MCExpr *Val = getImm();
-    return static_cast<const MCConstantExpr *>(Val)->getValue();
+    if (auto CE = dyn_cast<MCConstantExpr>(Expr)) {
+      VK = A32MCExpr::VK_A32_None;
+      Imm = CE->getValue();
+      return true;
+    }
+
+    return false;
   }
 
   bool isImm15() const {
-    return (isConstantImm() && isInt<15>(getConstantImm()));
+    A32MCExpr::VariantKind VK = A32MCExpr::VK_A32_None;
+    int64_t Imm;
+    bool IsValid;
+    if (!isImm())
+      return false;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    if (!IsConstantImm)
+      IsValid = A32AsmParser::classifySymbolRef(getImm(), VK);
+    else
+      IsValid = isInt<15>(Imm);
+    return IsValid && (
+      VK == A32MCExpr::VK_A32_None
+      || VK == A32MCExpr::VK_A32_LO12
+      || VK == A32MCExpr::VK_A32_LO12_PCREL);
   }
 
   bool isImm22() const {
-    return (isConstantImm() && isInt<22>(getConstantImm()));
+    A32MCExpr::VariantKind VK = A32MCExpr::VK_A32_None;
+    int64_t Imm;
+    bool IsValid;
+    if (!isImm())
+      return false;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    if (!IsConstantImm)
+      IsValid = A32AsmParser::classifySymbolRef(getImm(), VK);
+    else
+      IsValid = isShiftedInt<20, 2>(Imm);
+    return IsValid && VK == A32MCExpr::VK_A32_None;
   }
 
   bool isUI20() const {
-    return (isConstantImm() && isInt<32>(getConstantImm()));
+    A32MCExpr::VariantKind VK = A32MCExpr::VK_A32_None;
+    int64_t Imm;
+    bool IsValid;
+    if (!isImm())
+      return false;
+    bool IsConstantImm = evaluateConstantImm(getImm(), Imm, VK);
+    if (!IsConstantImm)
+      IsValid = A32AsmParser::classifySymbolRef(getImm(), VK);
+    else
+      IsValid = isShiftedInt<20, 12>(Imm);
+    return IsValid && (
+      VK == A32MCExpr::VK_A32_None
+      || VK == A32MCExpr::VK_A32_HI20
+      || VK == A32MCExpr::VK_A32_HI20_PCREL);
   }
 
   /// getStartLoc - Gets location of the first token of this operand
@@ -217,8 +263,17 @@ public:
 
   void addExpr(MCInst &Inst, const MCExpr *Expr) const {
     assert(Expr && "Expr shouldn't be null!");
-    if (auto *CE = dyn_cast<MCConstantExpr>(Expr))
-      Inst.addOperand(MCOperand::createImm(CE->getValue()));
+    int64_t Imm = 0;
+    bool IsConstant = false;
+    if (auto *RE = dyn_cast<A32MCExpr>(Expr)) {
+      IsConstant = RE->evaluateAsConstant(Imm);
+    } else if (auto *CE = dyn_cast<MCConstantExpr>(Expr)) {
+      IsConstant = true;
+      Imm = CE->getValue();
+    }
+
+    if (IsConstant)
+      Inst.addOperand(MCOperand::createImm(Imm));
     else
       Inst.addOperand(MCOperand::createExpr(Expr));
   }
@@ -283,12 +338,18 @@ bool A32AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
     }
     return Error(ErrorLoc, "invalid operand for instruction");
   }
-  case Match_InvalidImm15:
-    return generateImmOutOfRangeError(Operands, ErrorInfo, -(1 << 14), (1 << 14) - 1);
-  case Match_InvalidImm22:
-    return generateImmOutOfRangeError(Operands, ErrorInfo, -(1 << 21), (1 << 21) - 1);
-  case Match_InvalidUI20:
-    return generateImmOutOfRangeError(Operands, ErrorInfo, -((int64_t)1 << 31), ((int64_t)1 << 31) - 1);
+  case Match_InvalidImm15: {
+    SMLoc ErrorLoc = ((A32Operand &)*Operands[ErrorInfo]).getStartLoc();
+    return Error(ErrorLoc, "immediate must be an integer in the range [" + Twine(-(1 << 14)) + ", " + Twine((1 << 14) - 1) + "]");
+  }
+  case Match_InvalidImm22: {
+    SMLoc ErrorLoc = ((A32Operand &)*Operands[ErrorInfo]).getStartLoc();
+    return Error(ErrorLoc, "immediate must be a multiple of 4 in the range [" + Twine(-(1 << 21)) + ", " + Twine((1 << 21) - 4) + "]");
+  }
+  case Match_InvalidUI20: {
+    SMLoc ErrorLoc = ((A32Operand &)*Operands[ErrorInfo]).getStartLoc();
+    return Error(ErrorLoc, "immediate must be a multiple of 2^12 in the range [" + Twine(-((int64_t)1 << 31)) + ", " + Twine(((int64_t)1 << 31) - ((int64_t)1 << 12)) + "]");
+  }
   }
 
   llvm_unreachable("Unknown match type detected!");
@@ -347,9 +408,21 @@ OperandMatchResultTy A32AsmParser::parseImmediate(OperandVector &Operands) {
   switch (getLexer().getKind()) {
   default:
     return MatchOperand_NoMatch;
-  case AsmToken::LParen:
+  case AsmToken::LParen: {
+    getParser().Lex(); // Eat '('
+
+    const MCExpr *SubExpr;
+    if (getParser().parseParenExpression(SubExpr, E))
+      return MatchOperand_ParseFail;
+
+    Res = A32MCExpr::create(SubExpr, A32MCExpr::VK_A32_None, getContext());
+    break;
+  }
+  case AsmToken::Dot:
   case AsmToken::Minus:
   case AsmToken::Plus:
+  case AsmToken::Exclaim:
+  case AsmToken::Tilde:
   case AsmToken::Integer:
   case AsmToken::String:
     if (getParser().parseExpression(Res))
@@ -363,6 +436,8 @@ OperandMatchResultTy A32AsmParser::parseImmediate(OperandVector &Operands) {
     Res = MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, getContext());
     break;
   }
+  case AsmToken::Percent:
+    return parseOperandWithModifier(Operands);
   }
 
   Operands.push_back(A32Operand::createImm(Res, S, E));
@@ -384,6 +459,45 @@ bool A32AsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
   // Finally we have exhausted all options and must declare defeat.
   Error(getLoc(), "unknown operand");
   return true;
+}
+
+OperandMatchResultTy A32AsmParser::parseOperandWithModifier(OperandVector &Operands) {
+  SMLoc S = getLoc();
+  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+
+  if (getLexer().getKind() != AsmToken::Percent) {
+    Error(getLoc(), "expected '%' for operand modifier");
+    return MatchOperand_ParseFail;
+  }
+
+  getParser().Lex(); // Eat '%'
+
+  if (getLexer().getKind() != AsmToken::Identifier) {
+    Error(getLoc(), "expected valid identifier for operand modifier");
+    return MatchOperand_ParseFail;
+  }
+  StringRef Identifier = getParser().getTok().getIdentifier();
+  A32MCExpr::VariantKind VK = A32MCExpr::getVariantKindForName(Identifier);
+  if (VK == A32MCExpr::VK_A32_Invalid) {
+    Error(getLoc(), "unrecognized operand modifier");
+    return MatchOperand_ParseFail;
+  }
+
+  getParser().Lex(); // Eat the identifier
+  if (getLexer().getKind() != AsmToken::LParen) {
+    Error(getLoc(), "expected '('");
+    return MatchOperand_ParseFail;
+  }
+  getParser().Lex(); // Eat '('
+
+  const MCExpr *SubExpr;
+  if (getParser().parseParenExpression(SubExpr, E)) {
+    return MatchOperand_ParseFail;
+  }
+
+  const MCExpr *ModExpr = A32MCExpr::create(SubExpr, VK, getContext());
+  Operands.push_back(A32Operand::createImm(ModExpr, S, E));
+  return MatchOperand_Success;
 }
 
 bool A32AsmParser::ParseInstruction(ParseInstructionInfo &Info,
@@ -417,6 +531,21 @@ bool A32AsmParser::ParseInstruction(ParseInstructionInfo &Info,
   }
 
   getParser().Lex(); // Consume the EndOfStatement.
+  return false;
+}
+
+bool A32AsmParser::classifySymbolRef(const MCExpr *Expr, A32MCExpr::VariantKind &Kind) {
+  Kind = A32MCExpr::VK_A32_None;
+
+  if (const A32MCExpr *RE = dyn_cast<A32MCExpr>(Expr)) {
+    Kind = RE->getKind();
+    Expr = RE->getSubExpr();
+  }
+
+  MCValue Res;
+  MCFixup Fixup;
+  if (Expr->evaluateAsRelocatable(Res, nullptr, &Fixup))
+    return Res.getRefKind() == A32MCExpr::VK_A32_None;
   return false;
 }
 

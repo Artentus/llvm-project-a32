@@ -4,6 +4,7 @@ add_llvm_component_library(LLVMA32Desc
   A32InstPrinter.cpp
   A32MCAsmInfo.cpp
   A32MCCodeEmitter.cpp
+  A32MCExpr.cpp
   A32MCTargetDesc.cpp
 
   LINK_COMPONENTS

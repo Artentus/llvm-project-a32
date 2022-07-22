@@ -9,6 +9,7 @@
 #ifndef LLVM_LIB_TARGET_A32_MCTARGETDESC_A32ASMBACKEND_H
 #define LLVM_LIB_TARGET_A32_MCTARGETDESC_A32ASMBACKEND_H
 
+#include "MCTargetDesc/A32FixupKinds.h"
 #include "MCTargetDesc/A32MCTargetDesc.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCFixupKindInfo.h"
@@ -46,8 +47,10 @@ public:
   }
 
   unsigned getNumFixupKinds() const override {
-    return 1;
+    return A32::NumTargetFixupKinds;
   }
+
+  const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override;
 
   bool mayNeedRelaxation(const MCInst &Inst,
                          const MCSubtargetInfo &STI) const override {

@@ -20,12 +20,37 @@ void A32MCAsmInfo::anchor() {}
 
 A32MCAsmInfo::A32MCAsmInfo(const Triple &TT) {
   CodePointerSize = CalleeSaveStackSlotSize = 4;
-  CommentString = "//";
+  CommentString = "#";
+  AllowAdditionalComments = true;
   AlignmentIsInBytes = true;
   SupportsDebugInformation = false;
   ExceptionsType = ExceptionHandling::DwarfCFI;
-  Data8bitsDirective = "#d8 ";
-  Data16bitsDirective = "#d16 ";
-  Data32bitsDirective = "#d32 ";
-  Data64bitsDirective = "#d64 ";
+  AllowAtAtStartOfIdentifier = false;
+  AllowDollarAtStartOfIdentifier = false;
+  AllowHashAtStartOfIdentifier = false;
+  AllowQuestionAtStartOfIdentifier = false;
+  //Data8bitsDirective = "\t.d8\t";
+  //Data16bitsDirective = "\t.d16\t";
+  //Data32bitsDirective = "\t.d32\t";
+  //Data64bitsDirective = "\t.d64\t";
+  //AsciiDirective = "\t.ascii\t";
+  //AscizDirective = "\t.asciiz\t";
+  //ByteListDirective = "\t.d8\t";
+  DollarIsPC = true;
+  DotIsPC = false;
+  StarIsPC = false;
+  //GlobalDirective = "\t.global\t";
+  HasDotTypeDotSizeDirective = true;
+  HasFourStringsDotFile = false;
+  HasSingleParameterDotFile = true;
+  HasFunctionAlignment = true;
+  HasIdentDirective = false;
+  IsLittleEndian = true;
+  LabelSuffix = ":";
+  MaxInstLength = 4;
+  MinInstAlignment = 4;
+  StackGrowsUp = false;
+  SupportsSignedData = true;
+  //ZeroDirective = "\t.zero\t";
+  ZeroDirectiveSupportsNonZeroValue = false;
 }

@@ -48,14 +48,14 @@ def imm22 : Operand<i32> {
   let ParserMatchClass = ImmAsmOperand<22>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<22>";
+  let PrintMethod = "printPcRelOperand";
   let MCOperandPredicate = [{
     int64_t Imm;
     if (MCOp.evaluateAsConstantImm(Imm))
-      return isInt<22>(Imm);
+      return isShiftedInt<20, 2>(Imm);
     return MCOp.isBareSymbolRef();
   }];
-  //let OperandType = "OPERAND_IMM22";
-  //let OperandNamespace = "A32Op";
+  let OperandType = "OPERAND_PCREL";
 }
 
 def ui20 : Operand<i32> {
@@ -65,7 +65,7 @@ def ui20 : Operand<i32> {
   let MCOperandPredicate = [{
     int64_t Imm;
     if (MCOp.evaluateAsConstantImm(Imm))
-      return isInt<32>(Imm);
+      return isShiftedInt<20, 12>(Imm);
     return MCOp.isBareSymbolRef();
   }];
   //let OperandType = "OPERAND_UI20";
@@ -151,7 +151,9 @@ def BR_S_L  : A32InstBranch<CON_S_L , (outs), (ins imm22:$imm22), "br.s.l  $imm2
 def BR_S_GE : A32InstBranch<CON_S_GE, (outs), (ins imm22:$imm22), "br.s.ge $imm22">;
 def BR_S_LE : A32InstBranch<CON_S_LE, (outs), (ins imm22:$imm22), "br.s.le $imm22">;
 def BR_S_G  : A32InstBranch<CON_S_G , (outs), (ins imm22:$imm22), "br.s.g  $imm22">;
-def BRA     : A32InstBranch<CON_TRUE, (outs), (ins imm22:$imm22), "bra     $imm22">;
+
+let isBranch = 0, isTerminator = 0, isCall = 1 in
+def JR : A32InstBranch<CON_TRUE, (outs), (ins imm22:$imm22), "jr $imm22">;
 
 def MV_C    : A32InstMoveReg<CON_C   , (outs GPR:$rd), (ins GPR:$rsl, GPR:$rsr), "mv.c    $rd, $rsl, $rsr">;
 def MV_Z    : A32InstMoveReg<CON_Z   , (outs GPR:$rd), (ins GPR:$rsl, GPR:$rsr), "mv.z    $rd, $rsl, $rsr">;
@@ -233,7 +235,6 @@ def : InstAlias<"st16 [$imm15o], $rs", (ST16 R0, GPR:$rs, imm15:$imm15o)>;
 def : InstAlias<"out  [$imm15o], $rs", (OUT  R0, GPR:$rs, imm15:$imm15o)>;
 
 def : InstAlias<"jmp $rs"      , (JMP     GPR:$rs, 0)       >;
-def : InstAlias<"jmp $imm15o"  , (JMP     R0, imm15:$imm15o)>;
 def : InstAlias<"jmp [$rs]"    , (JMP_IND GPR:$rs, 0)       >;
 def : InstAlias<"jmp [$imm15o]", (JMP_IND R0, imm15:$imm15o)>;
 

@@ -6,6 +6,20 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Format specifies the encoding used by the instruction. This is used by
+// A32MCCodeEmitter to determine which form of fixup to use. These
+// definitions must be kept in-sync with A32BaseInfo.h.
+class InstFormat<bits<4> val> {
+  bits<4> Value = val;
+}
+
+def InstFormatPseudo : InstFormat<0>;
+def InstFormatRegReg : InstFormat<1>;
+def InstFormatRegImm : InstFormat<2>;
+def InstFormatUI     : InstFormat<3>;
+def InstFormatBranch : InstFormat<4>;
+def InstFormatOther  : InstFormat<5>;
+
 class A32OpcodeGroup<bits<3> val> {
   bits<3> Value = val;
 }
@@ -93,7 +107,7 @@ def CON_S_LE  : A32Condition<0b1101>;
 def CON_S_G   : A32Condition<0b1110>;
 def CON_TRUE  : A32Condition<0b1111>;
 
-class A32Inst<A32OpcodeGroup grp, dag outs, dag ins, string asmstr, list<dag> pattern> : Instruction {
+class A32Inst<A32OpcodeGroup grp, dag outs, dag ins, string asmstr, list<dag> pattern, InstFormat format> : Instruction {
   let Namespace = "A32";
   let Size = 4;
 
@@ -106,18 +120,19 @@ class A32Inst<A32OpcodeGroup grp, dag outs, dag ins, string asmstr, list<dag> pa
   dag InOperandList = ins;
   let AsmString = asmstr;
   let Pattern = pattern;
+  let TSFlags{3-0} = format.Value;
 }
 
 // Pseudo instructions
 class A32Pseudo<A32OpcodeGroup grp, dag outs, dag ins, list<dag> pattern>
-    : A32Inst<grp, outs, ins, "", pattern> {
+    : A32Inst<grp, outs, ins, "", pattern, InstFormatPseudo> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in
 class A32InstMisc<A32MiscOp op, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_MISC, outs, ins, asmstr, []> {
+    : A32Inst<GRP_MISC, outs, ins, asmstr, [], InstFormatOther> {
   let Inst{4-3} = op.Value;
   let Inst{5} = 0;
   let Inst{6} = 0;
@@ -126,7 +141,7 @@ class A32InstMisc<A32MiscOp op, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 1, mayLoad = 0, mayStore = 0 in
 class A32InstSys<A32SysOp op, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_MISC, outs, ins, asmstr, []> {
+    : A32Inst<GRP_MISC, outs, ins, asmstr, [], InstFormatOther> {
   let Inst{3} = op.Value;
   let Inst{5-4} = 0;
   let Inst{6} = 1;
@@ -135,7 +150,7 @@ class A32InstSys<A32SysOp op, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 1, mayLoad = 0, mayStore = 0, isAsCheapAsAMove = 1 in
 class A32InstAluReg<A32AluOp op, bit comm, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_ALU_REG, outs, ins, asmstr, []> {
+    : A32Inst<GRP_ALU_REG, outs, ins, asmstr, [], InstFormatRegReg> {
   bits<5> rd;
   bits<5> rsl;
   bits<5> rsr;
@@ -151,7 +166,7 @@ class A32InstAluReg<A32AluOp op, bit comm, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 1, mayLoad = 0, mayStore = 0, isAsCheapAsAMove = 1 in
 class A32InstAluImm<A32AluOp op, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_ALU_IMM, outs, ins, asmstr, []> {
+    : A32Inst<GRP_ALU_IMM, outs, ins, asmstr, [], InstFormatRegImm> {
   bits<5> rd;
   bits<5> rsl;
   bits<15> imm15sr;
@@ -164,7 +179,7 @@ class A32InstAluImm<A32AluOp op, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 1, mayStore = 0 in
 class A32InstLoad<A32LoadStoreOp op, bit sigext, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_LD_ST, outs, ins, asmstr, []> {
+    : A32Inst<GRP_LD_ST, outs, ins, asmstr, [], InstFormatRegImm> {
   bits<5> rd;
   bits<5> rs;
   bits<15> imm15o;
@@ -179,7 +194,7 @@ class A32InstLoad<A32LoadStoreOp op, bit sigext, dag outs, dag ins, string asmst
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 1 in
 class A32InstStore<A32LoadStoreOp op, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_LD_ST, outs, ins, asmstr, []> {
+    : A32Inst<GRP_LD_ST, outs, ins, asmstr, [], InstFormatRegImm> {
   bits<5> rd;
   bits<5> rs;
   bits<15> imm15o;
@@ -194,7 +209,7 @@ class A32InstStore<A32LoadStoreOp op, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isCall = 1 in
 class A32InstJump<bit indirect, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_JMP_UI, outs, ins, asmstr, []> {
+    : A32Inst<GRP_JMP_UI, outs, ins, asmstr, [], InstFormatRegImm> {
   bits<5> rs;
   bits<15> imm15o;
   
@@ -207,7 +222,7 @@ class A32InstJump<bit indirect, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isAsCheapAsAMove = 1 in
 class A32InstLink<dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_JMP_UI, outs, ins, asmstr, []> {
+    : A32Inst<GRP_JMP_UI, outs, ins, asmstr, [], InstFormatRegImm> {
   bits<5> rd;
   bits<15> imm15o;
   
@@ -219,7 +234,7 @@ class A32InstLink<dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isAsCheapAsAMove = 1 in
 class A32InstUi<A32UiOp op, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_JMP_UI, outs, ins, asmstr, []> {
+    : A32Inst<GRP_JMP_UI, outs, ins, asmstr, [], InstFormatUI> {
   bits<5> rd;
   bits<32> ui20;
   
@@ -233,7 +248,7 @@ class A32InstUi<A32UiOp op, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isBranch = 1, isTerminator = 1 in
 class A32InstBranch<A32Condition cond, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_BRA, outs, ins, asmstr, []> {
+    : A32Inst<GRP_BRA, outs, ins, asmstr, [], InstFormatBranch> {
   bits<22> imm22;
   
   let Inst{6-3} = cond.Value;
@@ -245,7 +260,7 @@ class A32InstBranch<A32Condition cond, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isAsCheapAsAMove = 1 in
 class A32InstMoveReg<A32Condition cond, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_MOV_REG, outs, ins, asmstr, []> {
+    : A32Inst<GRP_MOV_REG, outs, ins, asmstr, [], InstFormatRegReg> {
   bits<5> rd;
   bits<5> rsl;
   bits<5> rsr;
@@ -259,7 +274,7 @@ class A32InstMoveReg<A32Condition cond, dag outs, dag ins, string asmstr>
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, isAsCheapAsAMove = 1 in
 class A32InstMoveImm<A32Condition cond, dag outs, dag ins, string asmstr>
-    : A32Inst<GRP_MOV_IMM, outs, ins, asmstr, []> {
+    : A32Inst<GRP_MOV_IMM, outs, ins, asmstr, [], InstFormatRegImm> {
   bits<5> rd;
   bits<5> rsl;
   bits<15> imm15sr;
