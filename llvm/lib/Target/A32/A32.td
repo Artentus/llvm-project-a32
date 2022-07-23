@@ -14,10 +14,12 @@ include "llvm/Target/Target.td"
 
 // include "A32Schedule.td"
 include "A32RegisterInfo.td"
-// include "A32CallingConv.td"
+include "A32CallingConv.td"
 include "A32InstrInfo.td"
 
-def A32InstrInfo : InstrInfo;
+def A32InstrInfo : InstrInfo {
+  let guessInstructionProperties = 0;
+}
 
 def A32AsmParser : AsmParser {
   let ShouldEmitMatchRegisterAltName = 1;

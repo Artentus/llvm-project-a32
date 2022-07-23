@@ -14,6 +14,15 @@
 include "A32InstrFormats.td"
 
 //===----------------------------------------------------------------------===//
+// A32 specific DAG Nodes.
+//===----------------------------------------------------------------------===//
+
+def RetFlag : SDNode<"A32ISD::RET_FLAG", SDTNone,
+                     [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+def a32_mulhsu : SDNode<"A32ISD::MULHSU", SDTIntBinOp>;
+
+//===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.
 //===----------------------------------------------------------------------===//
 
@@ -29,7 +38,7 @@ class UIAsmOperand<int width> : AsmOperandClass {
   let DiagnosticType = !strconcat("Invalid", Name);
 }
 
-def imm15 : Operand<i32> {
+def imm15 : Operand<i32>, ImmLeaf<i32, [{return isInt<15>(Imm);}]> {
   let ParserMatchClass = ImmAsmOperand<15>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<15>";
@@ -44,7 +53,7 @@ def imm15 : Operand<i32> {
 }
 
 // A 22-bit signed immediate where the two least significant bits are zero.
-def imm22 : Operand<i32> {
+def imm22 : Operand<i32>, ImmLeaf<i32, [{return isShiftedInt<20, 2>(Imm);}]> {
   let ParserMatchClass = ImmAsmOperand<22>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<22>";
@@ -58,7 +67,7 @@ def imm22 : Operand<i32> {
   let OperandType = "OPERAND_PCREL";
 }
 
-def ui20 : Operand<i32> {
+def ui20 : Operand<i32>, ImmLeaf<i32, [{return isShiftedInt<20, 12>(Imm);}]> {
   let ParserMatchClass = UIAsmOperand<20>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeImmOperand<32>";
@@ -252,3 +261,52 @@ def : InstAlias<"mv.eq   $rd, $rsl, $imm15sr", (IMV_Z  GPR:$rd, GPR:$rsl, imm15:
 def : InstAlias<"mv.neq  $rd, $rsl, $imm15sr", (IMV_NZ GPR:$rd, GPR:$rsl, imm15:$imm15sr)>;
 def : InstAlias<"mv.u.l  $rd, $rsl, $imm15sr", (IMV_NC GPR:$rd, GPR:$rsl, imm15:$imm15sr)>;
 def : InstAlias<"mv.u.ge $rd, $rsl, $imm15sr", (IMV_C  GPR:$rd, GPR:$rsl, imm15:$imm15sr)>;
+
+//===----------------------------------------------------------------------===//
+// Pseudo-instructions and codegen patterns
+//===----------------------------------------------------------------------===//
+
+/// Generic pattern classes
+
+class PatAluReg<SDPatternOperator OpNode, A32InstAluReg Inst>
+    : Pat<(OpNode GPR:$rsl, GPR:$rsr), (Inst GPR:$rsl, GPR:$rsr)>;
+class PatAluImm<SDPatternOperator OpNode, A32InstAluImm Inst>
+    : Pat<(OpNode GPR:$rsl, imm15:$imm15sr), (Inst GPR:$rsl, imm15:$imm15sr)>;
+
+/// Alu operations
+
+def : PatAluReg<add       , ADD   >;
+def : PatAluReg<addc      , ADDC  >;
+def : PatAluReg<sub       , SUB   >;
+def : PatAluReg<subc      , SUBB  >;
+def : PatAluReg<and       , AND   >;
+def : PatAluReg<or        , OR    >;
+def : PatAluReg<xor       , XOR   >;
+def : PatAluReg<shl       , SHL   >;
+def : PatAluReg<srl       , LSR   >;
+def : PatAluReg<sra       , ASR   >;
+def : PatAluReg<mul       , MUL   >;
+def : PatAluReg<mulhu     , MULHUU>;
+def : PatAluReg<mulhs     , MULHSS>;
+def : PatAluReg<a32_mulhsu, MULHSU>;
+
+def : PatAluImm<add       , IADD   >;
+def : PatAluImm<addc      , IADDC  >;
+def : PatAluImm<sub       , ISUB   >;
+def : PatAluImm<subc      , ISUBB  >;
+def : PatAluImm<and       , IAND   >;
+def : PatAluImm<or        , IOR    >;
+def : PatAluImm<xor       , IXOR   >;
+def : PatAluImm<shl       , ISHL   >;
+def : PatAluImm<srl       , ILSR   >;
+def : PatAluImm<sra       , IASR   >;
+def : PatAluImm<mul       , IMUL   >;
+def : PatAluImm<mulhu     , IMULHUU>;
+def : PatAluImm<mulhs     , IMULHSS>;
+def : PatAluImm<a32_mulhsu, IMULHSU>;
+
+/// Branches and jumps
+
+let isBarrier = 1, isReturn = 1, isTerminator = 1 in
+def PseudoRET : A32Pseudo<GRP_BRA, (outs), (ins), [(RetFlag)]>,
+                PseudoInstExpansion<(JMP R1, 0)>;

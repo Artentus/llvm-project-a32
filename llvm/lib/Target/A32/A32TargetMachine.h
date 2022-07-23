@@ -13,6 +13,8 @@
 #ifndef LLVM_LIB_TARGET_A32_A32TARGETMACHINE_H
 #define LLVM_LIB_TARGET_A32_A32TARGETMACHINE_H
 
+#include "MCTargetDesc/A32MCTargetDesc.h"
+#include "A32Subtarget.h"
 #include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Target/TargetMachine.h"
@@ -20,12 +22,17 @@
 namespace llvm {
 class A32TargetMachine : public LLVMTargetMachine {
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
+  A32Subtarget Subtarget;
 
 public:
   A32TargetMachine(const Target &T, const Triple &TT, StringRef CPU,
                      StringRef FS, const TargetOptions &Options,
                      Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
                      CodeGenOpt::Level OL, bool JIT);
+
+  const A32Subtarget *getSubtargetImpl(const Function &) const override {
+    return &Subtarget;
+  }
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 

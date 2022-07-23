@@ -44,10 +44,31 @@ A32TargetMachine::A32TargetMachine(const Target &T, const Triple &TT,
     : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
                         getEffectiveRelocModel(TT, RM),
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      TLOF(std::make_unique<TargetLoweringObjectFileELF>()) {
+      TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
+      Subtarget(TT, CPU, CPU, FS, *this) {
   initAsmInfo();
 }
 
+namespace {
+class A32PassConfig : public TargetPassConfig {
+public:
+  A32PassConfig(A32TargetMachine &TM, PassManagerBase &PM)
+      : TargetPassConfig(TM, PM) {}
+
+  A32TargetMachine &getA32TargetMachine() const {
+    return getTM<A32TargetMachine>();
+  }
+
+  bool addInstSelector() override;
+};
+}
+
+bool A32PassConfig::addInstSelector() {
+  addPass(createA32ISelDag(getA32TargetMachine()));
+
+  return false;
+}
+
 TargetPassConfig *A32TargetMachine::createPassConfig(PassManagerBase &PM) {
-  return new TargetPassConfig(*this, PM);
+  return new A32PassConfig(*this, PM);
 }
